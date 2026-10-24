@@ -3,7 +3,7 @@
 Site institucional + painel administrativo para assistência técnica de
 notebooks e desktops em Fortaleza/CE.
 
-React 19 · Vite 6 · Tailwind CSS 4 · Supabase · Motion
+React 19 · Vite 6 · Tailwind CSS 4 · Supabase self-hosted · animações em CSS puro
 
 ---
 
@@ -125,6 +125,12 @@ src/
 - **Acessibilidade** — foco visível global via `:focus-visible`, modais com
   focus trap e `role="dialog"`, campos com `<label>` real, e respeito a
   `prefers-reduced-motion`.
+- **Animações de entrada** — só mexem em `transform`, **nunca em `opacity` a
+  partir de 0**. O relógio de animação do compositor pode congelar quando a
+  aba vai para segundo plano; com `opacity` animada o conteúdo ficaria
+  permanentemente invisível. Com `transform` apenas, ele degrada para
+  "visível e levemente deslocado". A entrada é controlada por `Reveal`
+  (IntersectionObserver) + as classes `reveal-pending` / `reveal-in`.
 
 ### Fluxo de dados
 
