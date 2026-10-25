@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+# Cancela execuções anteriores do mesmo commit — economiza runner.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Valores fictícios: o objetivo é validar que o processo de build
+  # funciona e que as variáveis chegam ao bundle. Nenhum segredo aqui.
+  VITE_SUPABASE_URL: https://placeholder.invalid
+  VITE_SUPABASE_ANON_KEY: placeholder-anon-key
+  VITE_ADMIN_EMAIL: placeholder@example.com
+
+jobs:
+  check:
+    name: Typecheck e build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+      - name: Confere que as variáveis VITE_* chegaram no bundle
+        run: |
+          set -euo pipefail
+          BUNDLE=$(ls dist/assets/*.js)
+          grep -q "placeholder.invalid" "$BUNDLE" \
+            || { echo "::error::VITE_SUPABASE_URL nao foi embutida no bundle"; exit 1; }
+          grep -q "placeholder-anon-key" "$BUNDLE" \
+            || { echo "::error::VITE_SUPABASE_ANON_KEY nao foi embutida no bundle"; exit 1; }
+          echo "OK: variaveis VITE_* presentes no bundle"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+          retention-days: 7
+
+  docker:
+    name: Imagem Docker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build da imagem (sem publicar)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: fortealtech:ci
+          build-args: |
+            VITE_SUPABASE_URL=${{ env.VITE_SUPABASE_URL }}
+            VITE_SUPABASE_ANON_KEY=${{ env.VITE_SUPABASE_ANON_KEY }}
+            VITE_ADMIN_EMAIL=${{ env.VITE_ADMIN_EMAIL }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Valida o nginx.conf
+        run: docker run --rm fortealtech:ci nginx -t
+
+      - name: Confere o HTML servido
+        run: |
+          set -euo pipefail
+          docker run -d --name smoke -p 8080:80 fortealtech:ci
+          sleep 3
+          curl -fsS http://localhost:8080/ | grep -q '<div id="root">' \
+            || { echo "::error::index.html nao foi servido corretamente"; docker logs smoke; exit 1; }
+          ASSET=$(curl -fsS http://localhost:8080/ | grep -o '/assets/index-[^"]*\.js' | head -1)
+          curl -fsS "http://localhost:8080${ASSET}" > /dev/null \
+            || { echo "::error::bundle JS nao foi servido"; exit 1; }
+          echo "OK: site responde e o bundle e servido"
+          docker rm -f smoke
