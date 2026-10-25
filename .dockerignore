@@ -1,0 +1,22 @@
+# Contexto de build enxuto: só o que o build realmente usa.
+# Sem isso, o node_modules da máquina entra na imagem e o build
+# fica lento (e pode instalar o package errado para o Linux).
+
+node_modules/
+dist/
+build/
+coverage/
+
+.git/
+.gitignore
+.gitattributes
+
+# As variáveis VITE_* chegam via --build-arg / build variables.
+# Nunca embute um .env real na imagem.
+.env
+.env.*
+!.env.example
+
+*.log
+.vite/
+.DS_Store

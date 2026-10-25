@@ -115,6 +115,16 @@ src/
     └── admin/               # Painel admin (abas + modais de CRUD)
 ```
 
+Arquivos na raiz que também importam:
+
+| Arquivo | Para quê |
+| ------- | -------- |
+| `Dockerfile` | Build em duas etapas (Node → nginx) para o Coolify |
+| `nginx.conf` | SPA fallback, cache de assets com hash, gzip |
+| `.dockerignore` | Mantém `node_modules` e `.env` fora da imagem |
+| `schema.sql` | Estrutura do banco + RLS + seeds idempotentes |
+| `.env.example` | Checklist das variáveis que o build exige |
+
 ### Onde ficam as regras de UI
 
 - **Tokens e classes** — `src/index.css`. As classes `btn-*`, `field`,
@@ -147,3 +157,53 @@ Requer autenticação via Supabase Auth e o e-mail precisa bater com
 
 Abas disponíveis: **Notebooks**, **Serviços**, **Conteúdo** e **Mensagens**.
 Notebooks vendidos são arquivados automaticamente após 2 dias.
+
+## Deploy
+
+O app é uma **SPA de página única** (sem react-router, âncoras `#`), então o
+resultado do build é um site estático puro — `dist/` pode ser servido por
+qualquer servidor de arquivos.
+
+### ⚠️ Variáveis `VITE_*` são resolvidas em TEMPO DE BUILD
+
+O Vite **substitui** `import.meta.env.VITE_*` por valores literais durante o
+`vite build`. Se as variáveis não existirem no momento do build, o bundle sai
+com o placeholder e o site nasce na tela de "configuração pendente" — sem
+erro visível, só quebrado.
+
+Cadastre estas três no Coolify **antes** do primeiro deploy:
+
+| Variável | Valor |
+| -------- | ----- |
+| `VITE_SUPABASE_URL` | URL base da instância self-hosted |
+| `VITE_SUPABASE_ANON_KEY` | Chave pública anon |
+| `VITE_ADMIN_EMAIL` | E-mail do técnico (libera o painel admin) |
+
+### Opção A — Docker (recomendado)
+
+O repositório já traz `Dockerfile`, `nginx.conf` e `.dockerignore`. O build é
+em duas etapas (Node → nginx) e o Coolify detecta o Dockerfile sozinho.
+
+| Campo no Coolify | Valor |
+| ----------------- | ----- |
+| Build Pack | **Dockerfile** |
+| Dockerfile Path | `/Dockerfile` (padrão) |
+| Port | `80` |
+| Healthcheck Path | `/` |
+
+As variáveis `VITE_*` entram como **Build Variables** (o `ARG` do Dockerfile as
+converte em `ENV` antes do `npm run build`).
+
+### Opção B — Preset estático do Coolify (sem Docker)
+
+| Campo no Coolify | Valor |
+| ----------------- | ----- |
+| Build Pack | **Static Site** (Nixpacks) |
+| Build Command | `npm run build` |
+| Output Directory | `dist` |
+| Port | `3000` |
+
+### Opção C — Node + `vite preview` (apenas para teste)
+
+Não use em produção: `vite preview` não é um servidor de produção e não deve
+ficar exposto na internet.
