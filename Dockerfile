@@ -19,10 +19,20 @@ COPY . .
 # placeholder e o site nasce na tela de "configuração pendente".
 # No Coolify: cadastre-as em "Build Variables" / "Runtime Variables"
 # com build pack Docker.
+#
+# O lint do Docker reclama que ARG/ENV nao devem receber segredo
+# (SecretsUsedInArgOrEnv). Aqui isso e proposital: a chave anon do
+# Supabase e publica por design - ela vai dentro do bundle que o
+# navegador baixa de qualquer jeito. Nenhuma senha ou service_role
+# key deve passar por aqui.
+# check=skip=SecretsUsedInArgOrEnv
 ARG VITE_SUPABASE_URL=""
+# check=skip=SecretsUsedInArgOrEnv
 ARG VITE_SUPABASE_ANON_KEY=""
+# check=skip=SecretsUsedInArgOrEnv
 ARG VITE_ADMIN_EMAIL=""
 
+# check=skip=SecretsUsedInArgOrEnv
 ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
     VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY \
     VITE_ADMIN_EMAIL=$VITE_ADMIN_EMAIL
