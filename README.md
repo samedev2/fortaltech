@@ -1,5 +1,7 @@
 # Fortal Tech — Assistência e Sistemas
 
+[![CI](https://github.com/samedev2/fortaltech/actions/workflows/ci.yml/badge.svg)](https://github.com/samedev2/fortaltech/actions/workflows/ci.yml)
+
 Site institucional + painel administrativo para assistência técnica de
 notebooks e desktops em Fortaleza/CE.
 
@@ -207,3 +209,15 @@ converte em `ENV` antes do `npm run build`).
 
 Não use em produção: `vite preview` não é um servidor de produção e não deve
 ficar exposto na internet.
+
+### CI no repositório
+
+Todo push roda `.github/workflows/ci.yml`, com dois jobs:
+
+| Job | O que faz |
+| --- | --------- |
+| **Typecheck e build** | `npm ci` → `tsc --noEmit` → `vite build`, e confere que as variáveis `VITE_*` realmente chegaram no bundle |
+| **Imagem Docker** | Constrói a imagem (sem publicar), valida o `nginx.conf` com `nginx -t` e faz um smoke test servindo o `index.html` e o bundle JS |
+
+Ou seja: um `Dockerfile` quebrado ou um erro de tipo **são detectados no
+GitHub**, antes de gastar um ciclo de deploy no Coolify.
